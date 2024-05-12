@@ -137,6 +137,21 @@ func GetHashType(hash string) crypto.Hash {
 	return 0
 }
 
+func GetHashTypePrefix(hashType crypto.Hash) string {
+	switch hashType {
+	case crypto.MD5:
+		return "md5"
+	case crypto.SHA1:
+		return "sha1"
+	case crypto.SHA256:
+		return "sha256"
+	case crypto.SHA512:
+		return "sha512"
+	default:
+		panic("unhandled default case")
+	}
+}
+
 func IsEmptyHash(hashType crypto.Hash, hash string) bool {
 	return hash == EmptyHashes[hashType]
 }

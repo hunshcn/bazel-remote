@@ -29,7 +29,7 @@ func TestDownloadFile(t *testing.T) {
 
 	blobSize := int64(1024)
 
-	data, hash := testutils.RandomDataAndHash(blobSize)
+	data, hash := testutils.RandomDataAndSHA256(blobSize)
 
 	// Add some overhead for likely CAS blob storage expansion.
 	cacheSize := blobSize*2 + disk.BlockSize
@@ -94,7 +94,7 @@ func TestUploadFilesConcurrently(t *testing.T) {
 
 	var requests [NumUploads]*http.Request
 	for i := 0; i < NumUploads; i++ {
-		data, hash := testutils.RandomDataAndHash(blobSize)
+		data, hash := testutils.RandomDataAndSHA256(blobSize)
 		r := httptest.NewRequest("PUT", "/cas/"+hash, bytes.NewReader(data))
 		requests[i] = r
 	}
@@ -159,7 +159,7 @@ func TestUploadSameFileConcurrently(t *testing.T) {
 	cacheDir := testutils.TempDir(t)
 	defer os.RemoveAll(cacheDir)
 
-	data, hash := testutils.RandomDataAndHash(1024)
+	data, hash := testutils.RandomDataAndSHA256(1024)
 
 	numWorkers := 100
 
@@ -202,7 +202,7 @@ func TestUploadCorruptedFile(t *testing.T) {
 	cacheDir := testutils.TempDir(t)
 	defer os.RemoveAll(cacheDir)
 
-	data, hash := testutils.RandomDataAndHash(1024)
+	data, hash := testutils.RandomDataAndSHA256(1024)
 	corruptedData := data[:999]
 
 	r := httptest.NewRequest("PUT", "/cas/"+hash, bytes.NewReader(corruptedData))
@@ -243,7 +243,7 @@ func TestUploadEmptyActionResult(t *testing.T) {
 	cacheDir := testutils.TempDir(t)
 	defer os.RemoveAll(cacheDir)
 
-	data, hash := testutils.RandomDataAndHash(0)
+	data, hash := testutils.RandomDataAndSHA256(0)
 
 	r := httptest.NewRequest("PUT", "/ac/"+hash, bytes.NewReader(data))
 
@@ -306,7 +306,7 @@ func testEmptyBlobAvailable(t *testing.T, method string) {
 	cacheDir := testutils.TempDir(t)
 	defer os.RemoveAll(cacheDir)
 
-	data, hash := testutils.RandomDataAndHash(0)
+	data, hash := testutils.RandomDataAndSHA256(0)
 	r := httptest.NewRequest(method, "/cas/"+hash, bytes.NewReader(data))
 
 	c, err := disk.New(cacheDir, 2048, disk.WithAccessLogger(testutils.NewSilentLogger()))
@@ -486,7 +486,7 @@ func TestRemoteReturnsNotFound(t *testing.T) {
 
 	h := NewHTTPCache(emptyCache, testutils.NewSilentLogger(), testutils.NewSilentLogger(), true, false, false, false, "")
 	// create a fake http.Request
-	_, hash := testutils.RandomDataAndHash(1024)
+	_, hash := testutils.RandomDataAndSHA256(1024)
 	url, _ := url.Parse(fmt.Sprintf("http://localhost:8080/ac/%s", hash))
 	reader := bytes.NewReader([]byte{})
 	body := io.NopCloser(reader)

@@ -1,8 +1,8 @@
 package testutils
 
 import (
+	"crypto"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"io"
 	"log"
@@ -23,8 +23,8 @@ func TempDir(t *testing.T) string {
 }
 
 // RandomDataAndHash creates a random blob of the specified size, and
-// returns that blob along with its sha256 hash.
-func RandomDataAndHash(size int64) ([]byte, string) {
+// returns that blob along with its hash.
+func RandomDataAndHash(hashType crypto.Hash, size int64) ([]byte, string) {
 	data := make([]byte, size)
 
 	for i := 0; i < 3; i++ {
@@ -36,13 +36,20 @@ func RandomDataAndHash(size int64) ([]byte, string) {
 		}
 	}
 
-	hash := sha256.Sum256(data)
-	hashStr := hex.EncodeToString(hash[:])
+	hasher := hashType.New()
+	hasher.Write(data)
+	hashStr := hex.EncodeToString(hasher.Sum(nil))
 	return data, hashStr
 }
 
-func RandomDataAndDigest(size int64) ([]byte, pb.Digest) {
-	data, hash := RandomDataAndHash(size)
+// RandomDataAndSHA256 creates a random blob of the specified size, and
+// returns that blob along with its sha256 hash.
+func RandomDataAndSHA256(size int64) ([]byte, string) {
+	return RandomDataAndHash(crypto.SHA256, size)
+}
+
+func RandomDataAndSHA256Digest(size int64) ([]byte, pb.Digest) {
+	data, hash := RandomDataAndSHA256(size)
 	return data, pb.Digest{
 		Hash:      hash,
 		SizeBytes: size,

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,7 +74,7 @@ func grpcTestSetup(t *testing.T) (tc grpcTestFixture) {
 }
 
 func grpcTestSetupInternal(t *testing.T, mangleACKeys bool) (tc grpcTestFixture) {
-	dir, err := os.MkdirTemp("", "bazel-remote-grpc-tests-"+t.Name())
+	dir, err := os.MkdirTemp("", "bazel-remote-grpc-tests-"+strings.ReplaceAll(t.Name(), "/", "_"))
 	if err != nil {
 		t.Fatal("Failed to create grpc test temp dir", err)
 	}
@@ -247,7 +248,7 @@ func TestGrpcAc(t *testing.T) {
 	if len(zeroData) != 0 {
 		t.Fatal("expected a zero-sized test blob")
 	}
-	_, zeroHash := testutils.RandomDataAndHash(0)
+	_, zeroHash := testutils.RandomDataAndSHA256(0)
 	zeroDigest := pb.Digest{
 		Hash:      zeroHash,
 		SizeBytes: 0,
@@ -408,25 +409,25 @@ func TestGrpcAcRequestInlinedBlobs(t *testing.T) {
 
 	testBlobSize := int64(128)
 
-	outputFile, outputFileHash := testutils.RandomDataAndHash(testBlobSize)
+	outputFile, outputFileHash := testutils.RandomDataAndSHA256(testBlobSize)
 	outputFileDigest := pb.Digest{
 		Hash:      outputFileHash,
 		SizeBytes: testBlobSize,
 	}
 
-	_, emptyFileHash := testutils.RandomDataAndHash(int64(0))
+	_, emptyFileHash := testutils.RandomDataAndSHA256(int64(0))
 	emptyFileDigest := pb.Digest{
 		Hash:      emptyFileHash,
 		SizeBytes: 0,
 	}
 
-	stdoutRaw, stdoutHash := testutils.RandomDataAndHash(testBlobSize)
+	stdoutRaw, stdoutHash := testutils.RandomDataAndSHA256(testBlobSize)
 	stdoutDigest := pb.Digest{
 		Hash:      stdoutHash,
 		SizeBytes: int64(len(stdoutRaw)),
 	}
 
-	stderrRaw, stderrHash := testutils.RandomDataAndHash(testBlobSize)
+	stderrRaw, stderrHash := testutils.RandomDataAndSHA256(testBlobSize)
 	stderrDigest := pb.Digest{
 		Hash:      stderrHash,
 		SizeBytes: int64(len(stderrRaw)),
@@ -615,7 +616,7 @@ func TestGrpcByteStreamDeadline(t *testing.T) {
 	defer cancel()
 
 	testBlobSize := int64(16)
-	testBlob, testBlobHash := testutils.RandomDataAndHash(testBlobSize)
+	testBlob, testBlobHash := testutils.RandomDataAndSHA256(testBlobSize)
 	testBlobDigest := pb.Digest{
 		Hash:      testBlobHash,
 		SizeBytes: int64(len(testBlob)),
@@ -792,7 +793,7 @@ func TestGrpcByteStream(t *testing.T) {
 	// Must be large enough to test multiple iterations of the
 	// bytestream Read Recv loop.
 	testBlobSize := int64(maxChunkSize * 3 / 2)
-	testBlob, testBlobHash := testutils.RandomDataAndHash(testBlobSize)
+	testBlob, testBlobHash := testutils.RandomDataAndSHA256(testBlobSize)
 	testBlobDigest := pb.Digest{
 		Hash:      testBlobHash,
 		SizeBytes: int64(len(testBlob)),
@@ -1009,7 +1010,7 @@ func TestGrpcByteStreamEmptyLastWrite(t *testing.T) {
 	defer os.Remove(fixture.tempdir)
 
 	instance := "ignoredByteStreamInstance"
-	testBlob, testBlobHash := testutils.RandomDataAndHash(7)
+	testBlob, testBlobHash := testutils.RandomDataAndSHA256(7)
 	req1 := bytestream.WriteRequest{
 		ResourceName: fmt.Sprintf(
 			"%s/uploads/%s/blobs/%s/%d",
@@ -1052,7 +1053,7 @@ func TestGrpcByteStreamZstdWrite(t *testing.T) {
 	// Must be large enough to test multiple iterations of the
 	// bytestream Read Recv loop.
 	testBlobSize := int64(maxChunkSize * 3 / 2)
-	testBlob, testBlobHash := testutils.RandomDataAndHash(testBlobSize)
+	testBlob, testBlobHash := testutils.RandomDataAndSHA256(testBlobSize)
 	testBlobDigest := pb.Digest{
 		Hash:      testBlobHash,
 		SizeBytes: int64(len(testBlob)),
@@ -1150,7 +1151,7 @@ func TestGrpcByteStreamInvalidReadLimit(t *testing.T) {
 	defer os.Remove(fixture.tempdir)
 
 	testBlobSize := int64(maxChunkSize)
-	testBlob, testBlobHash := testutils.RandomDataAndHash(testBlobSize)
+	testBlob, testBlobHash := testutils.RandomDataAndSHA256(testBlobSize)
 	testBlobDigest := pb.Digest{
 		Hash:      testBlobHash,
 		SizeBytes: int64(len(testBlob)),
@@ -1193,7 +1194,7 @@ func TestGrpcByteStreamSkippedWrite(t *testing.T) {
 	// Must be large enough to test multiple iterations of the
 	// bytestream Read Recv loop.
 	testBlobSize := int64(maxChunkSize * 3 / 2)
-	testBlob, testBlobHash := testutils.RandomDataAndHash(testBlobSize)
+	testBlob, testBlobHash := testutils.RandomDataAndSHA256(testBlobSize)
 	testBlobDigest := pb.Digest{
 		Hash:      testBlobHash,
 		SizeBytes: int64(len(testBlob)),
@@ -1272,7 +1273,7 @@ func TestGrpcByteStreamQueryWriteStatus(t *testing.T) {
 	fixture := grpcTestSetup(t)
 	defer os.Remove(fixture.tempdir)
 
-	testBlob, testBlobHash := testutils.RandomDataAndHash(123)
+	testBlob, testBlobHash := testutils.RandomDataAndSHA256(123)
 	testBlobDigest := pb.Digest{
 		Hash:      testBlobHash,
 		SizeBytes: int64(len(testBlob)),
@@ -1378,7 +1379,7 @@ func TestGrpcCasBasics(t *testing.T) {
 	fixture := grpcTestSetup(t)
 	defer os.Remove(fixture.tempdir)
 
-	testBlob, testBlobHash := testutils.RandomDataAndHash(256)
+	testBlob, testBlobHash := testutils.RandomDataAndSHA256(256)
 	testBlobDigest := pb.Digest{
 		Hash:      testBlobHash,
 		SizeBytes: int64(len(testBlob)),
@@ -1462,7 +1463,7 @@ func TestGrpcCasTreeRequest(t *testing.T) {
 
 	// Create a test tree, which does not yet exist in the CAS.
 
-	testBlob1, testBlob1Hash := testutils.RandomDataAndHash(64)
+	testBlob1, testBlob1Hash := testutils.RandomDataAndSHA256(64)
 	testFile1Digest := pb.Digest{
 		Hash:      testBlob1Hash,
 		SizeBytes: int64(len(testBlob1)),
@@ -1473,7 +1474,7 @@ func TestGrpcCasTreeRequest(t *testing.T) {
 		Digest: &testFile1Digest,
 	}
 
-	testBlob2, testBlob2Hash := testutils.RandomDataAndHash(128)
+	testBlob2, testBlob2Hash := testutils.RandomDataAndSHA256(128)
 	testFile2Digest := pb.Digest{
 		Hash:      testBlob2Hash,
 		SizeBytes: int64(len(testBlob2)),
@@ -1484,7 +1485,7 @@ func TestGrpcCasTreeRequest(t *testing.T) {
 		Digest: &testFile2Digest,
 	}
 
-	testBlob3, testBlob3Hash := testutils.RandomDataAndHash(512)
+	testBlob3, testBlob3Hash := testutils.RandomDataAndSHA256(512)
 	testFile3Digest := pb.Digest{
 		Hash:      testBlob3Hash,
 		SizeBytes: int64(len(testBlob3)),

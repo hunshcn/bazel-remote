@@ -68,7 +68,7 @@ func TestCacheBasics(t *testing.T) {
 			testCache.lru.Len())
 	}
 
-	data, hash := testutils.RandomDataAndHash(itemSize)
+	data, hash := testutils.RandomDataAndSHA256(itemSize)
 
 	// Non-existing item.
 	rdr, _, err := testCache.Get(ctx, cache.CAS, hash, itemSize, 0)
@@ -468,7 +468,7 @@ func TestCacheExistingFiles(t *testing.T) {
 
 	// Adding new blobs should eventually evict the oldest (items[0]).
 	for i := 0; i < 100; i++ {
-		data, hash := testutils.RandomDataAndHash(32)
+		data, hash := testutils.RandomDataAndSHA256(32)
 
 		if items[0].hash == hash {
 			// Add any item but this one, to ensure it will be evicted first.
@@ -561,7 +561,7 @@ func TestCacheCorruptedCASBlob(t *testing.T) {
 // Create a random file of a certain size in the given directory, and
 // return its hash.
 func createRandomFile(dir string, size int64) (string, error) {
-	data, hash := testutils.RandomDataAndHash(size)
+	data, hash := testutils.RandomDataAndSHA256(size)
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		return "", err
@@ -572,7 +572,7 @@ func createRandomFile(dir string, size int64) (string, error) {
 }
 
 func createRandomV1CASFile(dir string, size int64) (string, error) {
-	data, hash := testutils.RandomDataAndHash(size)
+	data, hash := testutils.RandomDataAndSHA256(size)
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		return "", err
@@ -654,7 +654,7 @@ func TestLoadExistingEntries(t *testing.T) {
 	var err error
 
 	// V0 AC entry.
-	acData, acHash := testutils.RandomDataAndHash(blobSize)
+	acData, acHash := testutils.RandomDataAndSHA256(blobSize)
 	err = os.MkdirAll(path.Join(cacheDir, "ac"), 0755)
 	if err != nil {
 		t.Fatal(err)
@@ -665,7 +665,7 @@ func TestLoadExistingEntries(t *testing.T) {
 	}
 
 	// V0 CAS entry.
-	casData, casHash := testutils.RandomDataAndHash(blobSize)
+	casData, casHash := testutils.RandomDataAndSHA256(blobSize)
 	err = os.MkdirAll(path.Join(cacheDir, "cas"), 0755)
 	if err != nil {
 		t.Fatal(err)
@@ -676,7 +676,7 @@ func TestLoadExistingEntries(t *testing.T) {
 	}
 
 	// V1 CAS entry.
-	casV1Data, casV1Hash := testutils.RandomDataAndHash(blobSize)
+	casV1Data, casV1Hash := testutils.RandomDataAndSHA256(blobSize)
 	err = os.MkdirAll(path.Join(cacheDir, "cas", casV1Hash[:2]), 0755)
 	if err != nil {
 		t.Fatal(err)
@@ -687,7 +687,7 @@ func TestLoadExistingEntries(t *testing.T) {
 	}
 
 	// V1 AC entry.
-	acV1Data, acV1Hash := testutils.RandomDataAndHash(blobSize)
+	acV1Data, acV1Hash := testutils.RandomDataAndSHA256(blobSize)
 	err = os.MkdirAll(path.Join(cacheDir, "ac", acV1Hash[:2]), 0755)
 	if err != nil {
 		t.Fatal(err)
@@ -698,7 +698,7 @@ func TestLoadExistingEntries(t *testing.T) {
 	}
 
 	// V1 RAW entry.
-	rawData, rawHash := testutils.RandomDataAndHash(blobSize)
+	rawData, rawHash := testutils.RandomDataAndSHA256(blobSize)
 	err = os.MkdirAll(path.Join(cacheDir, "raw", rawHash[:2]), 0755)
 	if err != nil {
 		t.Fatal(err)
@@ -778,7 +778,7 @@ func TestDistinctKeyspaces(t *testing.T) {
 	}
 	testCache := testCacheI.(*diskCache)
 
-	blob, casHash := testutils.RandomDataAndHash(1024)
+	blob, casHash := testutils.RandomDataAndSHA256(1024)
 
 	// Add the same blob with the same key, to each of the three
 	// keyspaces, and verify that we have exactly three items in
@@ -906,7 +906,7 @@ func TestHttpProxyBackend(t *testing.T) {
 	testCache := testCacheI.(*diskCache)
 
 	blobSize := int64(1024)
-	blob, casHash := testutils.RandomDataAndHash(blobSize)
+	blob, casHash := testutils.RandomDataAndSHA256(blobSize)
 
 	// Non-existing item
 	r, _, err := testCache.Get(ctx, cache.CAS, casHash, blobSize, 0)
@@ -1203,7 +1203,7 @@ func TestGetWithOffset(t *testing.T) {
 	}
 	testCache := testCacheI.(*diskCache)
 
-	data, hash := testutils.RandomDataAndHash(blobSize)
+	data, hash := testutils.RandomDataAndSHA256(blobSize)
 
 	err = testCache.Put(ctx, cache.CAS, hash, blobSize,
 		io.NopCloser(bytes.NewReader(data)))
@@ -1274,7 +1274,7 @@ func TestMetricsUnvalidatedAC(t *testing.T) {
 	testCache := testCacheI.(*metricsDecorator)
 
 	// Add an AC entry with a missing cas blob.
-	randomBlob, hash := testutils.RandomDataAndHash(100)
+	randomBlob, hash := testutils.RandomDataAndSHA256(100)
 	ar := pb.ActionResult{
 		StdoutDigest: &pb.Digest{
 			Hash:      hash,
@@ -1384,7 +1384,7 @@ func TestMetricsValidatedAC(t *testing.T) {
 	testCache := testCacheI.(*metricsDecorator)
 
 	// Add an AC entry with a missing cas blob.
-	randomBlob, hash := testutils.RandomDataAndHash(100)
+	randomBlob, hash := testutils.RandomDataAndSHA256(100)
 	ar := pb.ActionResult{
 		StdoutDigest: &pb.Digest{
 			Hash:      hash,

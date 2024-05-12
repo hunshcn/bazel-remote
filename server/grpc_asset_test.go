@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buchgr/bazel-remote/v2/cache"
 	asset "github.com/buchgr/bazel-remote/v2/genproto/build/bazel/remote/asset/v1"
 	//pb "github.com/buchgr/bazel-remote/v2/genproto/build/bazel/remote/execution/v2"
 
@@ -18,48 +20,57 @@ import (
 	testutils "github.com/buchgr/bazel-remote/v2/utils"
 )
 
+func testAssetFetchBlob(hashType crypto.Hash) func(t *testing.T) {
+	return func(t *testing.T) {
+		fixture := grpcTestSetup(t)
+		defer os.Remove(fixture.tempdir)
+
+		ts := newTestGetServer(hashType)
+
+		hash := strings.TrimSuffix(ts.path, ".tar.gz")
+		hashBytes, err := hex.DecodeString(hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := asset.FetchBlobRequest{
+			Uris: []string{
+				ts.srv.URL + "/404.unrecognisedextension",
+				ts.srv.URL + "/404.tar.gz",
+				ts.srv.URL + "/" + ts.path, // This URL should work.
+			},
+			Qualifiers: []*asset.Qualifier{
+				{
+					Name: "checksum.sri",
+					Value: cache.GetHashTypePrefix(hashType) + "-" +
+						base64.StdEncoding.EncodeToString(hashBytes),
+				},
+			},
+		}
+		fmt.Println(req)
+
+		resp, err := fixture.assetClient.FetchBlob(ctx, &req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if resp.Status.GetCode() != int32(codes.OK) {
+			t.Fatal("expected successful fetch", resp)
+		}
+		if resp.BlobDigest == nil {
+			t.Fatal("expected non-bil BlobDigest")
+		}
+		if resp.BlobDigest.Hash != hash {
+			t.Fatal("mismatching BlobDigest hash returned")
+		}
+	}
+}
+
 func TestAssetFetchBlob(t *testing.T) {
 	t.Parallel()
-
-	fixture := grpcTestSetup(t)
-	defer os.Remove(fixture.tempdir)
-
-	ts := newTestGetServer()
-
-	hexSha256 := strings.TrimSuffix(ts.path, ".tar.gz")
-	hashBytes, err := hex.DecodeString(hexSha256)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	req := asset.FetchBlobRequest{
-		Uris: []string{
-			ts.srv.URL + "/404.unrecognisedextension",
-			ts.srv.URL + "/404.tar.gz",
-			ts.srv.URL + "/" + ts.path, // This URL should work.
-		},
-		Qualifiers: []*asset.Qualifier{
-			{
-				Name: "checksum.sri",
-				Value: "sha256-" +
-					base64.StdEncoding.EncodeToString([]byte(hashBytes)),
-			},
-		},
-	}
-
-	resp, err := fixture.assetClient.FetchBlob(ctx, &req)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if resp.Status.GetCode() != int32(codes.OK) {
-		t.Fatal("expected successful fetch")
-	}
-	if resp.BlobDigest == nil {
-		t.Fatal("expected non-bil BlobDigest")
-	}
-	if resp.BlobDigest.Hash != hexSha256 {
-		t.Fatal("mismatching BlobDigest hash returned")
+	//cache.EmptyHashes
+	for hashType := range map[crypto.Hash]bool{crypto.SHA256: false} {
+		t.Run("hash-type-"+cache.GetHashTypePrefix(hashType), testAssetFetchBlob(hashType))
 	}
 }
 
@@ -93,8 +104,8 @@ func (s *testGetServer) handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func newTestGetServer() *testGetServer {
-	blob, hash := testutils.RandomDataAndHash(256)
+func newTestGetServer(hashType crypto.Hash) *testGetServer {
+	blob, hash := testutils.RandomDataAndHash(hashType, 256)
 
 	ts := testGetServer{
 		blob: blob,

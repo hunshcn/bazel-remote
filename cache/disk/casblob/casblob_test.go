@@ -35,7 +35,7 @@ func TestZstdFromLegacy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, hash := testutils.RandomDataAndHash(int64(size))
+	data, hash := testutils.RandomDataAndSHA256(int64(size))
 	dir := testutils.TempDir(t)
 	filename := fmt.Sprintf("%s/%s", dir, hash)
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0664)

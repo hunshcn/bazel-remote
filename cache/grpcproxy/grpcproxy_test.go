@@ -264,7 +264,7 @@ func runTest(t *testing.T, storageMode string) {
 	getFixture := newFixture(t, proxyFixture.proxy, storageMode)
 	time.Sleep(time.Second)
 
-	data, digest := testutils.RandomDataAndDigest(3 * 1024 * 1024)
+	data, digest := testutils.RandomDataAndSHA256Digest(3 * 1024 * 1024)
 
 	putCasReq := &bs.WriteRequest{
 		ResourceName: fmt.Sprintf("uploads/%s/blobs/%s/%d", uuid.New().String(), digest.Hash, digest.SizeBytes),

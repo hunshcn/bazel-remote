@@ -112,7 +112,7 @@ func TestEverything(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	casData, hash := testutils.RandomDataAndHash(1024)
+	casData, hash := testutils.RandomDataAndSHA256(1024)
 	t.Log("cas HASH:", hash)
 	acData := []byte{1, 2, 3, 4}
 

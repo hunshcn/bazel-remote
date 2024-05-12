@@ -209,10 +209,10 @@ func TestFindMissingCasBlobsWithProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data1, digest1 := testutils.RandomDataAndDigest(100)
-	_, digest2 := testutils.RandomDataAndDigest(200)
-	data3, digest3 := testutils.RandomDataAndDigest(300)
-	_, digest4 := testutils.RandomDataAndDigest(400)
+	data1, digest1 := testutils.RandomDataAndSHA256Digest(100)
+	_, digest2 := testutils.RandomDataAndSHA256Digest(200)
+	data3, digest3 := testutils.RandomDataAndSHA256Digest(300)
+	_, digest4 := testutils.RandomDataAndSHA256Digest(400)
 
 	proxy.Put(ctx, cache.CAS, digest1.Hash, digest1.SizeBytes, digest1.SizeBytes, io.NopCloser(bytes.NewReader(data1)))
 	proxy.Put(ctx, cache.CAS, digest3.Hash, digest3.SizeBytes, digest3.SizeBytes, io.NopCloser(bytes.NewReader(data3)))
@@ -275,10 +275,10 @@ func TestFindMissingCasBlobsWithProxyFailFast(t *testing.T) {
 	// Spawn a single worker.
 	go actualDiskCache.containsWorker()
 
-	data1, digest1 := testutils.RandomDataAndDigest(100)
-	_, digest2 := testutils.RandomDataAndDigest(200)
-	data3, digest3 := testutils.RandomDataAndDigest(300)
-	_, digest4 := testutils.RandomDataAndDigest(400)
+	data1, digest1 := testutils.RandomDataAndSHA256Digest(100)
+	_, digest2 := testutils.RandomDataAndSHA256Digest(200)
+	data3, digest3 := testutils.RandomDataAndSHA256Digest(300)
+	_, digest4 := testutils.RandomDataAndSHA256Digest(400)
 
 	proxy.Put(ctx, cache.CAS, digest1.Hash, digest1.SizeBytes, digest1.SizeBytes, io.NopCloser(bytes.NewReader(data1)))
 	proxy.Put(ctx, cache.CAS, digest3.Hash, digest3.SizeBytes, digest3.SizeBytes, io.NopCloser(bytes.NewReader(data3)))
@@ -334,10 +334,10 @@ func TestFindMissingCasBlobsWithProxyFailFastNoneMissing(t *testing.T) {
 	// Spawn a single worker.
 	go actualDiskCache.containsWorker()
 
-	data1, digest1 := testutils.RandomDataAndDigest(100)
-	data2, digest2 := testutils.RandomDataAndDigest(200)
-	data3, digest3 := testutils.RandomDataAndDigest(300)
-	data4, digest4 := testutils.RandomDataAndDigest(400)
+	data1, digest1 := testutils.RandomDataAndSHA256Digest(100)
+	data2, digest2 := testutils.RandomDataAndSHA256Digest(200)
+	data3, digest3 := testutils.RandomDataAndSHA256Digest(300)
+	data4, digest4 := testutils.RandomDataAndSHA256Digest(400)
 
 	proxy.Put(ctx, cache.CAS, digest1.Hash, digest1.SizeBytes, digest1.SizeBytes, io.NopCloser(bytes.NewReader(data1)))
 	proxy.Put(ctx, cache.CAS, digest2.Hash, digest2.SizeBytes, digest2.SizeBytes, io.NopCloser(bytes.NewReader(data2)))
@@ -408,9 +408,9 @@ func TestFindMissingCasBlobsWithProxyFailFastMaxProxyBlobSize(t *testing.T) {
 	// Spawn a single worker.
 	go actualDiskCache.containsWorker()
 
-	data1, digest1 := testutils.RandomDataAndDigest(100)
-	data2, digest2 := testutils.RandomDataAndDigest(200)
-	data3, digest3 := testutils.RandomDataAndDigest(300) // We expect this blob to not be found.
+	data1, digest1 := testutils.RandomDataAndSHA256Digest(100)
+	data2, digest2 := testutils.RandomDataAndSHA256Digest(200)
+	data3, digest3 := testutils.RandomDataAndSHA256Digest(300) // We expect this blob to not be found.
 
 	// Put blobs directly into proxy backend, where it will not be filtered out.
 	proxy.Put(ctx, cache.CAS, digest1.Hash, digest1.SizeBytes, digest1.SizeBytes, io.NopCloser(bytes.NewReader(data1)))
@@ -466,8 +466,8 @@ func TestFindMissingCasBlobsWithProxyMaxProxyBlobSize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data1, digest1 := testutils.RandomDataAndDigest(100)
-	data2, digest2 := testutils.RandomDataAndDigest(600)
+	data1, digest1 := testutils.RandomDataAndSHA256Digest(100)
+	data2, digest2 := testutils.RandomDataAndSHA256Digest(600)
 
 	proxy.Put(ctx, cache.CAS, digest1.Hash, digest1.SizeBytes, digest1.SizeBytes, io.NopCloser(bytes.NewReader(data1)))
 	proxy.Put(ctx, cache.CAS, digest2.Hash, digest2.SizeBytes, digest2.SizeBytes, io.NopCloser(bytes.NewReader(data2)))
