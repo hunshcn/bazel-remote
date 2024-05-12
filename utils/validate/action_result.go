@@ -31,7 +31,7 @@ var (
 )
 
 // Cache keys must be lower case asciified SHA256 sums.
-var HashKeyRegex = regexp.MustCompile("^[a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64}|[a-f0-9]{128}$")
+var HashKeyRegex = regexp.MustCompile("^(?:[a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64}|[a-f0-9]{128})$")
 
 // Validate the immediate fields in ar, but don't verify ar's
 // dependent blobs.

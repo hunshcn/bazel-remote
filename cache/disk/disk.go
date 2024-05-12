@@ -704,7 +704,7 @@ func (c *diskCache) Contains(ctx context.Context, kind cache.EntryKind, hash str
 	if hashType == 0 {
 		return false, -1
 	}
-	if kind == cache.CAS && size == 0 && cache.IsEmptyHash(hashType, hash) {
+	if kind == cache.CAS && size <= 0 && cache.IsEmptyHash(hashType, hash) {
 		return true, 0
 	}
 
