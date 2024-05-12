@@ -109,7 +109,7 @@ func LookupKey(kind EntryKind, hash string) string {
 	return kind.String() + "/" + hash
 }
 
-var emptyHashes = map[crypto.Hash]string{
+var EmptyHashes = map[crypto.Hash]string{
 	crypto.MD5:    "d41d8cd98f00b204e9800998ecf8427e",
 	crypto.SHA1:   "da39a3ee5e6b4b0d3255bfef95601890afd80709",
 	crypto.SHA256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -138,5 +138,5 @@ func GetHashType(hash string) crypto.Hash {
 }
 
 func IsEmptyHash(hashType crypto.Hash, hash string) bool {
-	return hash == emptyHashes[hashType]
+	return hash == EmptyHashes[hashType]
 }

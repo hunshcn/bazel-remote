@@ -308,7 +308,8 @@ func (h *httpCache) CacheHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if contentLength == 0 && kind == cache.CAS && hash != emptySha256 {
+		hashType := cache.GetHashType(hash)
+		if contentLength == 0 && kind == cache.CAS && hashType != 0 && cache.IsEmptyHash(hashType, hash) {
 			msg := fmt.Sprintf("Invalid empty blob hash: \"%s\"", hash)
 			http.Error(w, msg, http.StatusBadRequest)
 			h.errorLogger.Printf("PUT %s: %s", path(kind, hash), msg)

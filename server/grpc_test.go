@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -13,9 +14,10 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/health/grpc_health_v1"
+
 	asset "github.com/buchgr/bazel-remote/v2/genproto/build/bazel/remote/asset/v1"
 	pb "github.com/buchgr/bazel-remote/v2/genproto/build/bazel/remote/execution/v2"
-	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
@@ -436,7 +438,7 @@ func TestGrpcAcRequestInlinedBlobs(t *testing.T) {
 				{
 					Name: "emptyfile",
 					Digest: &pb.Digest{
-						Hash: emptySha256,
+						Hash: cache.EmptyHashes[crypto.SHA256],
 					},
 				},
 			},
@@ -447,7 +449,7 @@ func TestGrpcAcRequestInlinedBlobs(t *testing.T) {
 					{
 						Name: "emptyfile",
 						Digest: &pb.Digest{
-							Hash: emptySha256,
+							Hash: cache.EmptyHashes[crypto.SHA256],
 						},
 					},
 				},
@@ -715,7 +717,7 @@ func TestGrpcByteStreamEmptySha256(t *testing.T) {
 
 	// We should always be able to read the empty blob.
 
-	resource := fmt.Sprintf("emptyRead/blobs/%s/0", emptySha256)
+	resource := fmt.Sprintf("emptyRead/blobs/%s/0", cache.EmptyHashes[crypto.SHA256])
 	bsrReq := bytestream.ReadRequest{ResourceName: resource}
 
 	bsrc, err := fixture.bsClient.Read(ctx, &bsrReq)
@@ -746,7 +748,7 @@ func TestGrpcByteStreamEmptySha256(t *testing.T) {
 	// Also test that we can get the "compressed empty blob".
 	// Clients shouldn't do this, but it should be possible.
 
-	resource = fmt.Sprintf("emptyRead/compressed-blobs/zstd/%s/0", emptySha256)
+	resource = fmt.Sprintf("emptyRead/compressed-blobs/zstd/%s/0", cache.EmptyHashes[crypto.SHA256])
 	bsrReq = bytestream.ReadRequest{ResourceName: resource}
 
 	bsrc, err = fixture.bsClient.Read(ctx, &bsrReq)
@@ -1349,7 +1351,7 @@ func TestGrpcByteStreamQueryWriteStatus(t *testing.T) {
 		"%s/uploads/%s/blobs/%s/0",
 		instance,
 		uuid.New().String(),
-		emptySha256,
+		cache.EmptyHashes[crypto.SHA256],
 	)
 
 	req = &bytestream.QueryWriteStatusRequest{ResourceName: resourceName}

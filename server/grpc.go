@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 
@@ -26,11 +25,6 @@ import (
 
 	_ "github.com/mostynb/go-grpc-compression/snappy" // Register snappy
 	_ "github.com/mostynb/go-grpc-compression/zstd"   // and zstd support.
-)
-
-const (
-	hashKeyLength = 64
-	emptySha256   = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 )
 
 const grpcHealthServiceName = "/grpc.health.v1.Health/Check"
@@ -134,25 +128,24 @@ func (s *grpcServer) GetCapabilities(ctx context.Context,
 
 // Return an error if `hash` is not a valid cache key.
 func (s *grpcServer) validateHash(hash string, size int64, logPrefix string) error {
-	if size == int64(0) {
-		if hash == emptySha256 {
-			return nil
-		}
-
-		msg := "Invalid zero-length SHA256 hash"
-		s.accessLogger.Printf("%s %s: %s", logPrefix, hash, msg)
+	hashType := cache.GetHashType(hash)
+	if hashType == 0 {
+		msg := "Invalid hash length, only md5, sha1, sha256, sha512 are supported"
+		s.accessLogger.Printf("%s %s %s: %s", logPrefix, hashType.String(), hash, msg)
 		return status.Error(codes.InvalidArgument, msg)
 	}
-
-	if len(hash) != hashKeyLength {
-		msg := fmt.Sprintf("Hash length must be length %d", hashKeyLength)
-		s.accessLogger.Printf("%s %s: %s", logPrefix, hash, msg)
+	if size == int64(0) {
+		if cache.IsEmptyHash(hashType, hash) {
+			return nil
+		}
+		msg := "Invalid zero-length hash"
+		s.accessLogger.Printf("%s %s %s: %s", logPrefix, hashType.String(), hash, msg)
 		return status.Error(codes.InvalidArgument, msg)
 	}
 
 	if !validate.HashKeyRegex.MatchString(hash) {
 		msg := "Malformed hash"
-		s.accessLogger.Printf("%s %s: %s", logPrefix, hash, msg)
+		s.accessLogger.Printf("%s %s %s: %s", logPrefix, hashType.String(), hash, msg)
 		return status.Error(codes.InvalidArgument, msg)
 	}
 

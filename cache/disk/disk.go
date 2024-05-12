@@ -224,7 +224,7 @@ func (c *diskCache) Put(ctx context.Context, kind cache.EntryKind, hash string, 
 	// Just perform a simple/fast check here, to catch bad tests.
 	hashType := cache.GetHashType(hash)
 	if hashType == 0 {
-		return badReqErr("Invalid hash size: %d, only md5, sha1, sha256, sha512 are supported", len(hash))
+		return badReqErr("Invalid hash length: %d, only md5, sha1, sha256, sha512 are supported", len(hash))
 	}
 
 	if kind == cache.CAS && size == 0 && cache.IsEmptyHash(hashType, hash) {
@@ -543,7 +543,7 @@ func (c *diskCache) get(ctx context.Context, kind cache.EntryKind, hash string, 
 	// Just perform a simple/fast check here, to catch bad tests.
 	hashType := cache.GetHashType(hash)
 	if hashType == 0 {
-		return nil, -1, badReqErr("Invalid hash size: %d, only md5, sha1, sha256, sha512 are supported", len(hash))
+		return nil, -1, badReqErr("Invalid hash length: %d, only md5, sha1, sha256, sha512 are supported", len(hash))
 	}
 	if kind == cache.CAS && size <= 0 && cache.IsEmptyHash(hashType, hash) {
 		if zstd {
