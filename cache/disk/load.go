@@ -390,7 +390,7 @@ func (c *diskCache) scanDir() (scanResult, error) {
 	// compressed CAS items: <hash>-<logical size>-<random digits/ascii letters>
 	// uncompressed CAS items: <hash>-<logical size>-<random digits/ascii letters>.v1
 	// AC and RAW items: <hash>-<random digits/ascii letters>
-	re := regexp.MustCompile(`^([a-f0-9]{64})(?:-([1-9][0-9]*))?-([0-9a-zA-Z]+)(\.v1)?$`)
+	re := regexp.MustCompile(`^([a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64}|[a-f0-9]{128})(?:-([1-9][0-9]*))?-([0-9a-zA-Z]+)(\.v1)?$`)
 
 	// Ignore lost+found dirs, which are automatically created in the
 	// root dir of some unix style filesystems.

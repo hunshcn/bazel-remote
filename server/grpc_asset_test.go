@@ -47,29 +47,29 @@ func testAssetFetchBlob(hashType crypto.Hash) func(t *testing.T) {
 				},
 			},
 		}
-		fmt.Println(req)
-
-		resp, err := fixture.assetClient.FetchBlob(ctx, &req)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if resp.Status.GetCode() != int32(codes.OK) {
-			t.Fatal("expected successful fetch", resp)
-		}
-		if resp.BlobDigest == nil {
-			t.Fatal("expected non-bil BlobDigest")
-		}
-		if resp.BlobDigest.Hash != hash {
-			t.Fatal("mismatching BlobDigest hash returned")
+		// 1 do fetch
+		// 2 hit cache
+		for range 2 {
+			resp, err := fixture.assetClient.FetchBlob(ctx, &req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.Status.GetCode() != int32(codes.OK) {
+				t.Fatal("expected successful fetch", resp)
+			}
+			if resp.BlobDigest == nil {
+				t.Fatal("expected non-bil BlobDigest")
+			}
+			if resp.BlobDigest.Hash != hash {
+				t.Fatal("mismatching BlobDigest hash returned")
+			}
 		}
 	}
 }
 
 func TestAssetFetchBlob(t *testing.T) {
 	t.Parallel()
-	//cache.EmptyHashes
-	for hashType := range map[crypto.Hash]bool{crypto.SHA256: false} {
+	for hashType := range cache.EmptyHashes {
 		t.Run("hash-type-"+cache.GetHashTypePrefix(hashType), testAssetFetchBlob(hashType))
 	}
 }
