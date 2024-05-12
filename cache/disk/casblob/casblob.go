@@ -2,7 +2,7 @@ package casblob
 
 import (
 	"bytes"
-	"crypto/sha256"
+	"crypto"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -496,7 +496,7 @@ func (b *readCloserWrapper) Close() error {
 
 // Read from r and write to f, using CompressionType t.
 // Return the size on disk or an error if something went wrong.
-func WriteAndClose(zstd zstdimpl.ZstdImpl, r io.Reader, f *os.File, t CompressionType, hash string, size int64) (int64, error) {
+func WriteAndClose(zstd zstdimpl.ZstdImpl, r io.Reader, f *os.File, t CompressionType, hashType crypto.Hash, hash string, size int64) (int64, error) {
 	var err error
 	defer f.Close()
 
@@ -535,9 +535,8 @@ func WriteAndClose(zstd zstdimpl.ZstdImpl, r io.Reader, f *os.File, t Compressio
 
 	var n int64
 
+	hasher := hashType.New()
 	if t == Identity {
-		hasher := sha256.New()
-
 		n, err = io.Copy(io.MultiWriter(f, hasher), r)
 		if err != nil {
 			return -1, err
@@ -564,8 +563,6 @@ func WriteAndClose(zstd zstdimpl.ZstdImpl, r io.Reader, f *os.File, t Compressio
 	var numRead int
 
 	uncompressedChunk := make([]byte, chunkSize)
-
-	hasher := sha256.New()
 
 	for nextChunk < len(h.chunkOffsets)-1 {
 		h.chunkOffsets[nextChunk] = fileOffset

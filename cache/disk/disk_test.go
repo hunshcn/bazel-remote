@@ -24,8 +24,9 @@ import (
 	"github.com/buchgr/bazel-remote/v2/cache/httpproxy"
 	testutils "github.com/buchgr/bazel-remote/v2/utils"
 
-	pb "github.com/buchgr/bazel-remote/v2/genproto/build/bazel/remote/execution/v2"
 	"google.golang.org/protobuf/proto"
+
+	pb "github.com/buchgr/bazel-remote/v2/genproto/build/bazel/remote/execution/v2"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -256,6 +257,7 @@ func (d proxyStub) Get(ctx context.Context, kind cache.EntryKind, hash string, _
 		zi,
 		io.NopCloser(
 			strings.NewReader(contents)), tmpfile, casblob.Zstandard,
+		cache.GetHashType(hash),
 		hash, contentsLength)
 	if err != nil {
 		return nil, -1, err
@@ -431,7 +433,7 @@ func TestCacheExistingFiles(t *testing.T) {
 					t.Fatal(err)
 				}
 				_, err = casblob.WriteAndClose(zi, r, f, casblob.Zstandard,
-					it.hash, int64(len(it.contents)))
+					cache.GetHashType(it.hash), it.hash, int64(len(it.contents)))
 			}
 		} else {
 			err = os.WriteFile(fp, []byte(it.contents), os.ModePerm)

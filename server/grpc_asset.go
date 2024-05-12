@@ -3,7 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
+	"crypto"
 	"encoding/base64"
 	"encoding/hex"
 	"io"
@@ -27,9 +27,7 @@ var errNilFetchBlobRequest = grpc_status.Error(codes.InvalidArgument,
 	"expected a non-nil *FetchBlobRequest")
 
 func (s *grpcServer) FetchBlob(ctx context.Context, req *asset.FetchBlobRequest) (*asset.FetchBlobResponse, error) {
-
-	var sha256Str string
-
+	var hash string
 	// Q: which combinations of qualifiers to support?
 	// * simple file, identified by sha256 SRI AND/OR recognisable URL
 	// * git repository, identified by ???
@@ -66,10 +64,12 @@ func (s *grpcServer) FetchBlob(ctx context.Context, req *asset.FetchBlobRequest)
 			}, nil
 		}
 
-		if q.Name == "checksum.sri" && strings.HasPrefix(q.Value, "sha256-") {
+		if q.Name == "checksum.sri" {
 			// Ref: https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
-
-			b64hash := strings.TrimPrefix(q.Value, "sha256-")
+			hashType, b64hash, ok := strings.Cut(q.Value, "-")
+			if !ok || !cache.IsHashTypeSupported(hashType) {
+				continue
+			}
 
 			decoded, err := base64.StdEncoding.DecodeString(b64hash)
 			if err != nil {
@@ -78,22 +78,22 @@ func (s *grpcServer) FetchBlob(ctx context.Context, req *asset.FetchBlobRequest)
 				continue
 			}
 
-			sha256Str = hex.EncodeToString(decoded)
+			hash = hex.EncodeToString(decoded)
 
-			found, size := s.cache.Contains(ctx, cache.CAS, sha256Str, -1)
+			found, size := s.cache.Contains(ctx, cache.CAS, hash, -1)
 			if !found {
 				continue
 			}
 
 			if size < 0 {
 				// We don't know the size yet (bad http backend?).
-				r, actualSize, err := s.cache.Get(ctx, cache.CAS, sha256Str, -1, 0)
+				r, actualSize, err := s.cache.Get(ctx, cache.CAS, hash, -1, 0)
 				if r != nil {
 					defer r.Close()
 				}
 				if err != nil || actualSize < 0 {
 					s.errorLogger.Printf("failed to get CAS %s from proxy backend size: %d err: %v",
-						sha256Str, actualSize, err)
+						hash, actualSize, err)
 					continue
 				}
 				size = actualSize
@@ -102,7 +102,7 @@ func (s *grpcServer) FetchBlob(ctx context.Context, req *asset.FetchBlobRequest)
 			return &asset.FetchBlobResponse{
 				Status: &status.Status{Code: int32(codes.OK)},
 				BlobDigest: &pb.Digest{
-					Hash:      sha256Str,
+					Hash:      hash,
 					SizeBytes: size,
 				},
 			}, nil
@@ -114,7 +114,7 @@ func (s *grpcServer) FetchBlob(ctx context.Context, req *asset.FetchBlobRequest)
 	// See if we can download one of the URIs.
 
 	for _, uri := range req.GetUris() {
-		ok, actualHash, size := s.fetchItem(ctx, uri, sha256Str)
+		ok, actualHash, size := s.fetchItem(ctx, uri, hash)
 		if ok {
 			return &asset.FetchBlobResponse{
 				Status: &status.Status{Code: int32(codes.OK)},
@@ -163,15 +163,20 @@ func (s *grpcServer) fetchItem(ctx context.Context, uri string, expectedHash str
 	if expectedHash == "" || expectedSize < 0 {
 		// We can't call Put until we know the hash and size.
 
-		data, err := io.ReadAll(resp.Body)
+		hashType := crypto.SHA256
+		if expectedHash != "" {
+			hashType = cache.GetHashType(expectedHash)
+		}
+		hasher := hashType.New()
+
+		bf := bytes.NewBuffer(nil)
+		expectedSize, err = io.Copy(io.MultiWriter(bf, hasher), resp.Body)
 		if err != nil {
 			s.errorLogger.Printf("failed to read data: %v", uri)
 			return false, "", int64(-1)
 		}
 
-		expectedSize = int64(len(data))
-		hashBytes := sha256.Sum256(data)
-		hashStr := hex.EncodeToString(hashBytes[:])
+		hashStr := hex.EncodeToString(hasher.Sum(nil))
 
 		if expectedHash != "" && hashStr != expectedHash {
 			s.errorLogger.Printf("URI data has hash %s, expected %s",
@@ -180,7 +185,7 @@ func (s *grpcServer) fetchItem(ctx context.Context, uri string, expectedHash str
 		}
 
 		expectedHash = hashStr
-		rc = io.NopCloser(bytes.NewReader(data))
+		rc = io.NopCloser(bf)
 	}
 
 	err = s.cache.Put(ctx, cache.CAS, expectedHash, expectedSize, rc)

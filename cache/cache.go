@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"crypto"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
@@ -106,4 +107,36 @@ func TransformActionCacheKey(key, instance string, logger Logger) string {
 
 func LookupKey(kind EntryKind, hash string) string {
 	return kind.String() + "/" + hash
+}
+
+var emptyHashes = map[crypto.Hash]string{
+	crypto.MD5:    "d41d8cd98f00b204e9800998ecf8427e",
+	crypto.SHA1:   "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+	crypto.SHA256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+	crypto.SHA512: "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e",
+}
+
+func IsHashTypeSupported(hashType string) bool {
+	switch hashType {
+	case "md5", "sha1", "sha256", "sha512":
+		return true
+	}
+	return false
+}
+
+func GetHashType(hash string) crypto.Hash {
+	if len(hash) == 32 {
+		return crypto.MD5
+	} else if len(hash) == 40 {
+		return crypto.SHA1
+	} else if len(hash) == 64 {
+		return crypto.SHA256
+	} else if len(hash) == 128 {
+		return crypto.SHA512
+	}
+	return 0
+}
+
+func IsEmptyHash(hashType crypto.Hash, hash string) bool {
+	return hash == emptyHashes[hashType]
 }

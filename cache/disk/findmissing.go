@@ -180,7 +180,7 @@ func (c *diskCache) findMissingLocalCAS(blobs []*pb.Digest) int {
 	c.mu.Lock()
 
 	for i := range blobs {
-		if blobs[i].SizeBytes == 0 && blobs[i].Hash == emptySha256 {
+		if blobs[i].SizeBytes == 0 && cache.GetHashType(blobs[i].Hash) != 0 && cache.IsEmptyHash(cache.GetHashType(blobs[i].Hash), blobs[i].Hash) {
 			c.accessLogger.Printf("GRPC CAS HEAD %s OK", blobs[i].Hash)
 			blobs[i] = nil
 			continue

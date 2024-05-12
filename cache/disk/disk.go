@@ -3,7 +3,7 @@ package disk
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
+	"crypto"
 	"errors"
 	"fmt"
 	"io"
@@ -19,18 +19,15 @@ import (
 	"github.com/buchgr/bazel-remote/v2/cache"
 	"github.com/buchgr/bazel-remote/v2/cache/disk/casblob"
 	"github.com/buchgr/bazel-remote/v2/cache/disk/zstdimpl"
+	pb "github.com/buchgr/bazel-remote/v2/genproto/build/bazel/remote/execution/v2"
 	"github.com/buchgr/bazel-remote/v2/utils/annotate"
 	"github.com/buchgr/bazel-remote/v2/utils/tempfile"
 	"github.com/buchgr/bazel-remote/v2/utils/validate"
 
 	"github.com/djherbis/atime"
-
-	pb "github.com/buchgr/bazel-remote/v2/genproto/build/bazel/remote/execution/v2"
-	"google.golang.org/protobuf/proto"
-
 	"github.com/prometheus/client_golang/prometheus"
-
 	"golang.org/x/sync/semaphore"
+	"google.golang.org/protobuf/proto"
 )
 
 var tfc = tempfile.NewCreator()
@@ -86,9 +83,6 @@ type diskCache struct {
 
 	gaugeCacheAge prometheus.Gauge
 }
-
-const sha256HashStrSize = sha256.Size * 2 // Two hex characters per byte.
-const emptySha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 func internalErr(err error) *cache.Error {
 	return &cache.Error{
@@ -153,17 +147,12 @@ func (c *diskCache) updateCacheAgeMetric() {
 }
 
 func (c *diskCache) getElementPath(key Key, value lruItem) string {
-	ks := key.(string)
-	hash := ks[len(ks)-sha256.Size*2:]
-	var kind cache.EntryKind = cache.AC
-	if strings.HasPrefix(ks, "cas") {
-		kind = cache.CAS
-	} else if strings.HasPrefix(ks, "ac") {
-		kind = cache.AC
-	} else if strings.HasPrefix(ks, "raw") {
-		kind = cache.RAW
-	}
-
+	kindStr, hash, _ := strings.Cut(key.(string), "/")
+	var kind = map[string]cache.EntryKind{
+		"ac":  cache.AC,
+		"cas": cache.CAS,
+		"raw": cache.RAW,
+	}[kindStr]
 	return filepath.Join(c.dir, c.FileLocation(kind, value.legacy, hash, value.size, value.random))
 }
 
@@ -233,11 +222,12 @@ func (c *diskCache) Put(ctx context.Context, kind cache.EntryKind, hash string, 
 
 	// The hash format is checked properly in the http/grpc code.
 	// Just perform a simple/fast check here, to catch bad tests.
-	if len(hash) != sha256HashStrSize {
-		return badReqErr("Invalid hash size: %d, expected: %d", len(hash), sha256.Size)
+	hashType := cache.GetHashType(hash)
+	if hashType == 0 {
+		return badReqErr("Invalid hash size: %d, only md5, sha1, sha256, sha512 are supported", len(hash))
 	}
 
-	if kind == cache.CAS && size == 0 && hash == emptySha256 {
+	if kind == cache.CAS && size == 0 && cache.IsEmptyHash(hashType, hash) {
 		return nil
 	}
 
@@ -316,7 +306,7 @@ func (c *diskCache) Put(ctx context.Context, kind cache.EntryKind, hash string, 
 	removeTempfile = true
 
 	var sizeOnDisk int64
-	sizeOnDisk, err = c.writeAndCloseFile(ctx, r, kind, hash, size, tf)
+	sizeOnDisk, err = c.writeAndCloseFile(ctx, r, kind, hashType, hash, size, tf)
 	if err != nil {
 		return internalErr(err)
 	}
@@ -341,7 +331,7 @@ func (c *diskCache) Put(ctx context.Context, kind cache.EntryKind, hash string, 
 	return nil
 }
 
-func (c *diskCache) writeAndCloseFile(ctx context.Context, r io.Reader, kind cache.EntryKind, hash string, size int64, f *os.File) (int64, error) {
+func (c *diskCache) writeAndCloseFile(ctx context.Context, r io.Reader, kind cache.EntryKind, hashType crypto.Hash, hash string, size int64, f *os.File) (int64, error) {
 	closeFile := true
 	defer func() {
 		if closeFile {
@@ -353,7 +343,7 @@ func (c *diskCache) writeAndCloseFile(ctx context.Context, r io.Reader, kind cac
 	var sizeOnDisk int64
 
 	if kind == cache.CAS && c.storageMode != casblob.Identity {
-		sizeOnDisk, err = casblob.WriteAndClose(c.zstd, r, f, c.storageMode, hash, size)
+		sizeOnDisk, err = casblob.WriteAndClose(c.zstd, r, f, c.storageMode, hashType, hash, size)
 		if err != nil {
 			return -1, annotate.Err(ctx, "Failed to write compressed CAS blob to disk", err)
 		}
@@ -551,11 +541,11 @@ func (c *diskCache) GetZstd(ctx context.Context, hash string, size int64, offset
 func (c *diskCache) get(ctx context.Context, kind cache.EntryKind, hash string, size int64, offset int64, zstd bool) (rc io.ReadCloser, s int64, rErr error) {
 	// The hash format is checked properly in the http/grpc code.
 	// Just perform a simple/fast check here, to catch bad tests.
-	if len(hash) != sha256HashStrSize {
-		return nil, -1, badReqErr("Invalid hash size: %d, expected: %d", len(hash), sha256.Size)
+	hashType := cache.GetHashType(hash)
+	if hashType == 0 {
+		return nil, -1, badReqErr("Invalid hash size: %d, only md5, sha1, sha256, sha512 are supported", len(hash))
 	}
-
-	if kind == cache.CAS && size <= 0 && hash == emptySha256 {
+	if kind == cache.CAS && size <= 0 && cache.IsEmptyHash(hashType, hash) {
 		if zstd {
 			return io.NopCloser(bytes.NewReader(emptyZstdBlob)), 0, nil
 		}
@@ -709,11 +699,12 @@ func (c *diskCache) get(ctx context.Context, kind cache.EntryKind, hash string, 
 func (c *diskCache) Contains(ctx context.Context, kind cache.EntryKind, hash string, size int64) (bool, int64) {
 	// The hash format is checked properly in the http/grpc code.
 	// Just perform a simple/fast check here, to catch bad tests.
-	if len(hash) != sha256HashStrSize {
+
+	hashType := cache.GetHashType(hash)
+	if hashType == 0 {
 		return false, -1
 	}
-
-	if kind == cache.CAS && size <= 0 && hash == emptySha256 {
+	if kind == cache.CAS && size == 0 && cache.IsEmptyHash(hashType, hash) {
 		return true, 0
 	}
 

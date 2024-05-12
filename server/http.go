@@ -27,7 +27,7 @@ import (
 	syncpool "github.com/mostynb/zstdpool-syncpool"
 )
 
-var blobNameSHA256 = regexp.MustCompile("^/?(.*/)?(ac/|cas/)([a-f0-9]{64})$")
+var blobName = regexp.MustCompile("^/?(.*/)?(ac/|cas/)([a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64}|[a-f0-9]{128})$")
 
 var decoder, _ = zstd.NewReader(nil) // TODO: raise WithDecoderConcurrency ?
 
@@ -89,7 +89,7 @@ func NewHTTPCache(cache disk.Cache, accessLogger cache.Logger, errorLogger cache
 
 // Parse cache artifact information from the request URL
 func parseRequestURL(url string, validateAC bool) (kind cache.EntryKind, hash string, instance string, err error) {
-	m := blobNameSHA256.FindStringSubmatch(url)
+	m := blobName.FindStringSubmatch(url)
 	if m == nil {
 		err := fmt.Errorf("resource name must be a SHA256 hash in hex, "+
 			"got '%s'", html.EscapeString(url))
