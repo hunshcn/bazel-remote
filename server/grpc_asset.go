@@ -79,7 +79,7 @@ func (s *grpcServer) FetchBlob(ctx context.Context, req *asset.FetchBlobRequest)
 
 			hash = hex.EncodeToString(decoded)
 
-			hasher, err := hashing.Get(df)
+			hasher, err = hashing.Get(df)
 			if err != nil {
 				s.errorLogger.Printf("Unknown digest function \"%s\": %v", df, err)
 				continue

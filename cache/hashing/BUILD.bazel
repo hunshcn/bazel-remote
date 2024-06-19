@@ -5,13 +5,12 @@ go_library(
     srcs = [
         "hashing.go",
         "sha256.go",
+        "sha386.go",
+        "sha512.go",
     ],
     importpath = "github.com/buchgr/bazel-remote/v2/cache/hashing",
     visibility = ["//visibility:public"],
-    deps = [
-        "//genproto/build/bazel/remote/execution/v2:go_default_library",
-        "@com_lukechampine_blake3//:go_default_library",
-    ],
+    deps = ["//genproto/build/bazel/remote/execution/v2:go_default_library"],
 )
 
 go_test(
