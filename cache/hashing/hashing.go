@@ -19,14 +19,15 @@ var dfs []pb.DigestFunction_Value
 var hashers []Hasher
 
 func register(hasher Hasher) {
+	if registry == nil {
+		registry = make(map[pb.DigestFunction_Value]Hasher)
+	}
 	if hasher.DigestFunction() == DefaultFn {
 		DefaultHasher = hasher
+		registry[pb.DigestFunction_UNKNOWN] = hasher
 	}
 	if hasher.DigestFunction() == LegacyFn {
 		LegacyHasher = hasher
-	}
-	if registry == nil {
-		registry = make(map[pb.DigestFunction_Value]Hasher)
 	}
 	registry[hasher.DigestFunction()] = hasher
 	dfs = append(dfs, hasher.DigestFunction())

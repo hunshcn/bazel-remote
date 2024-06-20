@@ -28,7 +28,10 @@ var errNilFetchBlobRequest = grpc_status.Error(codes.InvalidArgument,
 
 func (s *grpcServer) FetchBlob(ctx context.Context, req *asset.FetchBlobRequest) (*asset.FetchBlobResponse, error) {
 	var hash string
-	hasher := hashing.DefaultHasher
+	hasher, err := hashing.Get(req.GetDigestFunction())
+	if err != nil {
+		s.errorLogger.Printf("Unknown digest function %d: %v", req.GetDigestFunction(), err)
+	}
 
 	// Q: which combinations of qualifiers to support?
 	// * simple file, identified by sha256 SRI AND/OR recognisable URL
@@ -110,7 +113,8 @@ func (s *grpcServer) FetchBlob(ctx context.Context, req *asset.FetchBlobRequest)
 			}
 
 			return &asset.FetchBlobResponse{
-				Status: &status.Status{Code: int32(codes.OK)},
+				DigestFunction: df,
+				Status:         &status.Status{Code: int32(codes.OK)},
 				BlobDigest: &pb.Digest{
 					Hash:      hash,
 					SizeBytes: size,
@@ -127,7 +131,8 @@ func (s *grpcServer) FetchBlob(ctx context.Context, req *asset.FetchBlobRequest)
 		ok, actualHash, size := s.fetchItem(ctx, hasher, uri, hash)
 		if ok {
 			return &asset.FetchBlobResponse{
-				Status: &status.Status{Code: int32(codes.OK)},
+				DigestFunction: hasher.DigestFunction(),
+				Status:         &status.Status{Code: int32(codes.OK)},
 				BlobDigest: &pb.Digest{
 					Hash:      actualHash,
 					SizeBytes: size,
